@@ -1,82 +1,139 @@
 #!/usr/bin/env python
 """
 Startup script: Run migrations then start the app.
-This replaces the shell command to ensure migrations run properly.
+This ensures migrations run before any requests hit the app.
 """
 import subprocess
 import sys
 import os
+import time
 
 # Set working directory to project root
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(PROJECT_ROOT)
 
+def check_env():
+    """Verify required environment variables are set."""
+    print("=" * 70)
+    print("Environment Check")
+    print("=" * 70)
+    
+    db_url = os.environ.get("DATABASE_URL", "")
+    
+    if not db_url:
+        print("❌ ERROR: DATABASE_URL environment variable is NOT SET!")
+        print("\nThis is required for database migrations.")
+        print("Make sure your Render PostgreSQL is connected and DATABASE_URL is set.")
+        return False
+    
+    # Show partial URL (hide password)
+    url_display = db_url.split("@")[1] if "@" in db_url else "***"
+    print(f"✅ DATABASE_URL is set: postgresql://...@{url_display}")
+    print(f"✅ Working directory: {os.getcwd()}")
+    print(f"✅ Python: {sys.version.split()[0]}")
+    print()
+    return True
+
+
 def run_migrations():
-    """Run alembic migrations."""
-    print("=" * 60)
-    print("Running database migrations...")
-    print(f"Working directory: {os.getcwd()}")
-    print(f"DATABASE_URL: {os.environ.get('DATABASE_URL', 'NOT SET')[:50]}...")
-    print("=" * 60)
+    """Run alembic migrations with detailed output."""
+    print("=" * 70)
+    print("Running Database Migrations")
+    print("=" * 70)
     
     try:
-        result = subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            check=False,  # Don't raise on non-zero exit, we'll handle it
-            capture_output=True,
+        # Run migration with full output
+        cmd = [sys.executable, "-m", "alembic", "upgrade", "head"]
+        print(f"Running: {' '.join(cmd)}\n")
+        
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
+            universal_newlines=True,
         )
         
-        # Print output
-        if result.stdout:
-            print(result.stdout)
-        if result.stderr:
-            print("STDERR:", result.stderr, file=sys.stderr)
+        # Stream output in real-time
+        for line in process.stdout:
+            print(line, end="")
         
-        if result.returncode == 0:
-            print("✅ Migrations completed successfully!")
+        returncode = process.wait()
+        
+        if returncode == 0:
+            print("\n✅ Migrations completed successfully!")
             return True
         else:
-            print(f"❌ Migration failed with exit code {result.returncode}")
+            print(f"\n❌ Migrations failed with exit code {returncode}")
+            print("\nThis usually means:")
+            print("  • DATABASE_URL is invalid or database is unreachable")
+            print("  • PostgreSQL service is down")
+            print("  • Network is blocked (firewall, etc.)")
             return False
             
+    except FileNotFoundError as e:
+        print(f"❌ Command not found: {e}")
+        print("Make sure alembic is installed (pip install alembic)")
+        return False
     except Exception as e:
-        print(f"❌ Error during migrations: {e}", file=sys.stderr)
+        print(f"❌ Unexpected error: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
 def start_app():
     """Start the uvicorn application."""
-    print("=" * 60)
-    print("Starting FastAPI application...")
-    print("=" * 60)
+    print("\n" + "=" * 70)
+    print("Starting FastAPI Application")
+    print("=" * 70 + "\n")
     
     port = os.environ.get("PORT", "8000")
     
     try:
-        subprocess.run(
-            [sys.executable, "-m", "uvicorn", "app.main:app", 
-             "--host", "0.0.0.0", "--port", port],
-            check=True,
-        )
+        cmd = [sys.executable, "-m", "uvicorn", "app.main:app",
+               "--host", "0.0.0.0", "--port", port]
+        print(f"Running: {' '.join(cmd)}\n")
+        
+        subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as e:
-        print(f"❌ Application failed: {e}")
+        print(f"\n❌ Application exited with error: {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Error starting application: {e}")
+        print(f"\n❌ Error: {e}")
         sys.exit(1)
+
+
+def main():
+    print("\n")
+    print("╔" + "=" * 68 + "╗")
+    print("║" + " " * 68 + "║")
+    print("║" + "  🚀 FastAPI Auth Service - Startup Script".center(68) + "║")
+    print("║" + " " * 68 + "║")
+    print("╚" + "=" * 68 + "╝")
+    print("\n")
+    
+    # Check environment
+    if not check_env():
+        print("\n⚠️  Cannot proceed without DATABASE_URL")
+        sys.exit(1)
+    
+    # Run migrations
+    if not run_migrations():
+        print("\n" + "=" * 70)
+        print("❌ STARTUP FAILED: Migrations did not complete")
+        print("=" * 70)
+        print("\nThe application requires a working database connection.")
+        print("Please check:")
+        print("  1. DATABASE_URL is set correctly in Render Environment")
+        print("  2. PostgreSQL instance is running and in the same region")
+        print("  3. Network connectivity between services is working")
+        print("\nCheck Render docs: https://render.com/docs/databases")
+        sys.exit(1)
+    
+    # Start the application
+    start_app()
 
 
 if __name__ == "__main__":
-    print("\n🚀 FastAPI Auth Service Startup\n")
-    
-    # Step 1: Run migrations
-    if not run_migrations():
-        print("\n⚠️  Migrations failed!")
-        print("Check DATABASE_URL is set in environment variables.")
-        print("Application will not start without successful migrations.\n")
-        sys.exit(1)
-    
-    # Step 2: Start the app
-    print()
-    start_app()
+    main()
