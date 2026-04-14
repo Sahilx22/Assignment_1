@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python scripts/startup.py
+    startCommand: bash scripts/start.sh
     envVars:
       - key: PYTHON_VERSION
         value: 3.12
