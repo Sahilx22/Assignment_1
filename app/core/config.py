@@ -5,10 +5,17 @@ Reads from environment variables and .env file.
 from functools import lru_cache
 from typing import List
 
-from pydantic import BaseSettings, EmailStr, validator
+from pydantic import EmailStr, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
+
     # -------------------------------------------------------------------------
     # Application
     # -------------------------------------------------------------------------
@@ -67,7 +74,8 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     RATE_LIMIT_PER_MINUTE: int = 60
 
-    @validator("ENVIRONMENT")
+    @field_validator("ENVIRONMENT")
+    @classmethod
     def validate_environment(cls, v: str) -> str:
         allowed = {"development", "staging", "production"}
         if v not in allowed:
@@ -77,11 +85,6 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT == "production"
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
 
 
 @lru_cache()

@@ -1,7 +1,7 @@
 # Core
-fastapi==0.103.2
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.12
 
 # Auth & Security
 python-jose[cryptography]==3.3.0
@@ -14,7 +14,9 @@ alembic==1.13.3
 psycopg2-binary==2.9.9
 
 # Validation
-pydantic==1.10.15
+pydantic==2.5.3
+pydantic-core==2.14.6
+pydantic-settings==2.1.0
 email-validator==2.2.0
 
 # HTTP Client (Google OAuth)
