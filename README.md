@@ -17,6 +17,8 @@ A production-ready backend authentication service built with **FastAPI**, featur
 - [Running Tests](#running-tests)
 - [Security Design](#security-design)
 - [Assumptions & Limitations](#assumptions--limitations)
+- [Bonus Features](#bonus-features-included)
+- [Deployment](#deployment)
 
 ---
 
@@ -101,28 +103,37 @@ fastapi-auth-service/
 │   ├── schemas/
 │   │   └── user.py              # Pydantic request/response schemas
 │   ├── services/
-│   │   ├── auth_service.py      # Registration, login, token management
-│   │   ├── email_service.py     # SendGrid email gateway
-│   │   ├── sms_service.py       # Twilio SMS gateway
-│   │   └── google_oauth.py      # Google OAuth2 flow
-│   └── main.py                  # App factory, middleware, routers
+│   │   ├── auth_service.py          # Registration, login, token management
+│   │   ├── email_service.py         # SendGrid email gateway
+│   │   ├── sms_service.py           # Twilio SMS gateway
+│   │   ├── google_oauth.py          # Google OAuth2 flow
+│   │   ├── twilio_verify_service.py # Twilio Verify API for OTP validation
+│   │   └── verification_service.py  # Email/SMS verification logic
+│   └── main.py                      # App factory, middleware, routers
 ├── alembic/
 │   ├── versions/
-│   │   └── 0001_initial.py      # Initial schema migration
-│   └── env.py                   # Alembic environment config
+│   │   ├── 0001_initial.py          # Initial schema migration
+│   │   └── 0002_verification_codes.py # Verification codes table
+│   └── env.py                       # Alembic environment config
+├── scripts/
+│   ├── bootstrap_admin.py           # Create initial admin user
+│   └── render_setup.sh              # Render deployment setup
 ├── tests/
-│   ├── conftest.py              # Fixtures, test DB, factories
+│   ├── conftest.py                  # Fixtures, test DB, factories
 │   ├── unit/
-│   │   └── test_security.py     # JWT + hashing unit tests
+│   │   └── test_security.py         # JWT + hashing unit tests
 │   └── integration/
-│       ├── test_auth.py         # Auth endpoint tests
-│       └── test_users.py        # User/RBAC endpoint tests
+│       ├── test_auth.py             # Auth endpoint tests
+│       └── test_users.py            # User/RBAC endpoint tests
 ├── alembic.ini
 ├── docker-compose.yml
 ├── Dockerfile
 ├── pytest.ini
 ├── requirements.txt
-└── .env.example
+├── .env.example
+├── render.yaml                      # Render deployment config
+├── RENDER_DEPLOYMENT.md             # Render deployment documentation
+└── README.md
 ```
 
 ---
@@ -384,6 +395,44 @@ Query params: `skip` (default 0), `limit` (default 50, max 200).
 
 ---
 
+### Admin Endpoints
+
+All `/admin/*` endpoints require `Authorization: Bearer <access_token>` from an **admin user** (🔒 Admin only).
+
+#### `GET /admin/users` — List all users with filters
+Query params: `skip` (default 0), `limit` (default 50), `role` (filter by role), `is_active` (bool filter).
+
+**Response `200`:**
+```json
+{
+  "users": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "full_name": "Name",
+      "role": "user",
+      "is_active": true,
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  ],
+  "total": 42
+}
+```
+
+#### `PATCH /admin/users/{user_id}/role` — Update user role
+**Request:**
+```json
+{ "role": "admin" }
+```
+
+#### `DELETE /admin/users/{user_id}` — Hard delete or soft deactivate user
+Query param: `hard_delete=false` (default, soft delete).
+
+#### `GET /admin/stats` — Get system statistics
+Returns user counts, active sessions, recent registrations, etc.
+
+---
+
 ### Health Check
 
 #### `GET /health` (public)
@@ -455,3 +504,48 @@ Tests use an **in-memory SQLite** database. Each test runs inside a transaction 
 - ✅ **Testing** — pytest with transaction-isolated fixtures, unit + integration test suites, coverage reporting
 - ✅ **Security** — token hashing, rotation, timing-attack resistance, UUID PKs, rate limiting
 - ✅ **Logging** — structured JSON logs with per-request correlation IDs via structlog
+
+---
+
+## Deployment
+
+### Scripts
+
+| Script | Purpose |
+|---|---|
+| `scripts/bootstrap_admin.py` | Create initial admin user for production deployments |
+| `scripts/render_setup.sh` | Setup script for Render.com deployment |
+
+**Create initial admin user:**
+```bash
+python scripts/bootstrap_admin.py \
+  --email admin@example.com \
+  --password "SecureAdminPassword123" \
+  --name "Admin User"
+```
+
+### Render Deployment
+
+This project includes pre-configured Render deployment files:
+
+- **`render.yaml`** — Service and database configuration for Render
+- **`RENDER_DEPLOYMENT.md`** — Detailed Render deployment guide
+
+**Deploy to Render:**
+```bash
+# Follow the guide in RENDER_DEPLOYMENT.md
+# Key steps:
+# 1. Create PostgreSQL database on Render
+# 2. Push repository to GitHub
+# 3. Connect via render.yaml
+# 4. Set environment variables
+# 5. Deploy
+```
+
+See [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md) for complete instructions.
+
+---
+
+## License
+
+MIT License — see LICENSE file for details.

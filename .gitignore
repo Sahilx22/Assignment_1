@@ -13,25 +13,63 @@ build/
 .venv/
 venv/
 env/
+ENV/
+env.bak/
+venv.bak/
 
 # Environment variables — NEVER commit secrets
 .env
+.env.local
+.env.*.local
 !.env.example
 
-# Testing
+# Testing & Coverage
 .pytest_cache/
-htmlcov/
 .coverage
 coverage.xml
+htmlcov/
+.hypothesis/
 
 # IDE
 .idea/
 .vscode/
 *.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
 
 # Docker
 *.log
+docker-compose.override.yml
 
 # OS
-.DS_Store
 Thumbs.db
+__MACOSX/
+*.lnk
+
+# Node (if used for frontend)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+.~*
+
+# IDE Settings (machine-specific)
+.vscode/settings.json
+.vscode/extensions.json

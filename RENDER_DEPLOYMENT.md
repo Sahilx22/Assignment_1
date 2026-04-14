@@ -94,6 +94,106 @@ Render automatically:
 
 ---
 
+## 🔐 **Post-Deployment Configuration (IMPORTANT!)**
+
+After your service deploys successfully, you **MUST** update your Google OAuth configuration and other environment variables to use your production URL.
+
+### **Step 1: Find Your Deployed URL**
+
+1. Go to Render Dashboard → Your Web Service
+2. Look for the **URL** at the top (format: `https://service-name.onrender.com`)
+3. Copy this URL — you'll need it for the next steps
+
+### **Step 2: Update Google OAuth in Google Cloud Console**
+
+Your service is currently configured with `localhost` redirect URIs. You need to update Google Cloud Console:
+
+#### **2a. Update Redirect URI in Google Cloud Console**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Select your project
+3. Go to **APIs & Services → Credentials**
+4. Click on your OAuth 2.0 Client ID (web application)
+5. Under **Authorized redirect URIs**, add:
+   ```
+   https://<your-service-name>.onrender.com/api/v1/auth/google/callback
+   ```
+   *(Replace `<your-service-name>` with your actual Render service name)*
+6. Save changes
+
+#### **2b. Update Environment Variables in Render**
+
+1. Go to Render Dashboard → Your Web Service → **Environment**
+2. Find `GOOGLE_REDIRECT_URI` and update it:
+   ```
+   https://<your-service-name>.onrender.com/api/v1/auth/google/callback
+   ```
+3. Click **"Save Changes"** — service will auto-redeploy
+
+### **Step 3: Update Other Production Environment Variables**
+
+Verify these variables are production-ready:
+
+| Variable | Current (localhost) | Production | Required? |
+|---|---|---|---|
+| `ENVIRONMENT` | `development` | `production` | ✅ Yes |
+| `DEBUG` | `false` | `false` | ✅ Yes |
+| `ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:8080` | Your frontend URL(s) | Yes (if you have frontend) |
+| `SENDGRID_FROM_EMAIL` | `sahilsoni.ds@gmail.com` | Your verified sender | ✅ Yes |
+| `JWT_SECRET_KEY` | Existing key | Keep as-is (or regenerate) | ✅ Keep |
+
+**Update in Render Dashboard → Environment:**
+
+1. Change `ENVIRONMENT` to `production` (this disables Swagger UI in prod)
+2. Set `ALLOWED_ORIGINS` to your frontend URL(s)
+3. Ensure `SENDGRID_FROM_EMAIL` is verified in SendGrid
+4. Save changes
+
+### **Step 4: Test Google OAuth Flow**
+
+After deploy with new URLs:
+
+1. Open your API docs: `https://<your-service-name>.onrender.com/docs`
+2. Try the `/auth/google/login` endpoint
+3. You should be redirected to Google's login screen
+4. After login, you should receive tokens
+5. If you see errors, check:
+   - Service Logs in Render Dashboard
+   - Google Cloud Console for correct redirect URL
+   - Environment variables are saved
+
+### **Step 5: Verify All Features Work**
+
+Test key endpoints:
+
+```bash
+# Health check
+curl https://<your-service-name>.onrender.com/api/v1/health
+
+# Register (test email/SMS)
+curl -X POST https://<your-service-name>.onrender.com/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email":"testuser@example.com",
+    "password":"TestPassword123",
+    "full_name":"Test User",
+    "phone_number":"+1234567890"
+  }'
+
+# Check logs for email/SMS delivery
+# Render Dashboard → Service → Logs
+```
+
+### **Step 6: Update Frontend URLs (If Applicable)**
+
+If you have a frontend app, update:
+
+1. **API Base URL** from `http://localhost:8000` to `https://<your-service-name>.onrender.com`
+2. **OAuth Redirect** (if client-side auth) to match Render URL
+3. **CORS** — Render service will accept your frontend requests
+
+---
+
 ## ✅ **Deployment Complete!**
 
 Your app is now live at:
