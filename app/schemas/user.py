@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, validator
 
 from app.models.user import UserRole
 
@@ -18,7 +18,8 @@ from app.models.user import UserRole
 # Base schemas
 class BaseResponse(BaseModel):
     """Standard envelope for single-resource responses."""
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
 
 
 # User schemas
@@ -29,8 +30,7 @@ class UserCreate(BaseModel):
     full_name: Optional[str] = Field(None, max_length=255)
     phone_number: Optional[str] = Field(None, max_length=20)
 
-    @field_validator("password")
-    @classmethod
+    @validator("password")
     def password_strength(cls, v: str) -> str:
         """Enforce minimal password complexity."""
         if not any(c.isdigit() for c in v):
